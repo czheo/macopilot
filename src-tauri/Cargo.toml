@@ -3,7 +3,7 @@ name = "macopilot"
 version = "0.0.0"
 description = "Copilot for Mac"
 authors = ["Zheyuan Chen"]
-license = "MIT/Apache-2.0"
+license = "MIT"
 repository = ""
 edition = "2021"
 
