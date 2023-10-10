@@ -1,67 +1,106 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use tauri::SystemTray;
-use tauri::{CustomMenuItem, SystemTrayEvent, Menu, SystemTrayMenu, Submenu, PhysicalPosition};
+use tauri::{CustomMenuItem, SystemTrayEvent, Menu, SystemTrayMenu};
 use tauri::{WindowBuilder, WindowEvent};
 use tauri::Manager;
+use tauri::GlobalShortcutManager;
+use tauri::ActivationPolicy;
 
-const INIT_WINDOW_WIDTH: f64 = 450.0;
-const INIT_WINDOW_HEIGHT: f64 = 600.0;
+const APP_NAME: &str = "Macopilot";
 const MAIN_WIN_LABEL: &str = "main-win";
+const QUITE_MENU_ITEM_LABEL: &str = "quit";
+const SETTINGS_MENU_ITEM_LABEL: &str = "settings";
+const CHAT_GPT_MENU_ITEM_LABEL: &str = "chat-gpt";
+const KEYBOARD_SHOTCUT: &str = "CTRL + G";
 
-fn toggle_window_visibility(app: &tauri::AppHandle, position: PhysicalPosition<f64>) {
+fn init_window(app: &tauri::AppHandle) {
+    let _window = WindowBuilder::new(
+        app,
+        MAIN_WIN_LABEL.to_string(),
+        tauri::WindowUrl::External("https://chat.openai.com/".parse().unwrap())
+    )
+        .title(APP_NAME)
+        .build()
+        .unwrap();
+}
+
+fn show_window(app: &tauri::AppHandle) {
     match app.get_window(MAIN_WIN_LABEL) {
         Some(window) => {
-            match window.is_visible() {
-                Ok(true) => {
-                    let _ = window.hide();
-                }
-                _ => {
-                    let win_size = window.inner_size().unwrap();
-                    let _ = window.set_position(PhysicalPosition::new(
-                            position.x - f64::from(win_size.width) / 2.0,
-                            position.y));
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
-            }
+            let _ = window.show();
+            let _ = window.set_focus();
         }
-        None => {
-            let _window = WindowBuilder::new(
-                app,
-                MAIN_WIN_LABEL.to_string(),
-                tauri::WindowUrl::External("https://chat.openai.com/".parse().unwrap())
-            )
-                .title("Macopilot")
-                .inner_size(INIT_WINDOW_WIDTH, INIT_WINDOW_HEIGHT)
-                .position(position.x - INIT_WINDOW_WIDTH / 2.0, position.y)
-                .closable(false)
-                .build()
-                .unwrap();
-        }
+        _ => {}
     }
 }
 
+fn toggle_window(app: &tauri::AppHandle) {
+    match app.get_window(MAIN_WIN_LABEL) {
+        Some(window) => {
+            do_toggle_window(&window);
+        }
+        _ => {}
+    }
+}
+
+fn do_toggle_window(window: &tauri::Window) {
+    if let Ok(true) = window.is_visible() {
+        let _ = window.hide();
+    } else {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
+fn register_hot_key(app_handle: tauri::AppHandle) {
+    let mut gsm = app_handle.global_shortcut_manager();
+    let _ = gsm.register(KEYBOARD_SHOTCUT, move || {
+        toggle_window(&app_handle);
+    });
+}
+
+fn create_system_tray() -> SystemTray {
+    let chat_gpt = CustomMenuItem::new(CHAT_GPT_MENU_ITEM_LABEL, "ChatGPT")
+        .accelerator(KEYBOARD_SHOTCUT);
+    // TODO: making shotcut configurable in settings
+    let _settings = CustomMenuItem::new(SETTINGS_MENU_ITEM_LABEL, "Settings");
+    let quit = CustomMenuItem::new(QUITE_MENU_ITEM_LABEL, "Quit");
+
+    return SystemTray::new()
+        .with_menu(SystemTrayMenu::new()
+            .add_item(chat_gpt)
+            // .add_item(settings)
+            .add_item(quit));
+}
+
+fn create_menu() -> Menu {
+    return Menu::new();
+}
+
+fn on_setup(app: &mut tauri::App) {
+    app.set_activation_policy(ActivationPolicy::Accessory);
+    let app_handle = app.handle();
+    init_window(&app_handle);
+    register_hot_key(app_handle);
+}
+
+
 fn main() {
-    // let quit = CustomMenuItem::new("quit".to_string(), "Quit");
-    let tray = SystemTray::new();
-        // .with_menu(SystemTrayMenu::new().add_item(quit));
-    let menu = Menu::new()
-        .add_item(CustomMenuItem::new("quit".to_string(), "Quit"));
     tauri::Builder::default()
-        .menu(menu)
-        .system_tray(tray)
+        .setup(|app| {
+            on_setup(app);
+            Ok(())
+        })
+        .menu(create_menu())
+        .system_tray(create_system_tray())
         .on_system_tray_event(|app, event| match event {
-            SystemTrayEvent::LeftClick {
-                position,
-                size: _,
-                ..
-            } => {
-                toggle_window_visibility(app, position);
-            }
             SystemTrayEvent::MenuItemClick { id, .. } => {
                 match id.as_str() {
-                    "quit" => {
+                    CHAT_GPT_MENU_ITEM_LABEL => {
+                        show_window(app);
+                    }
+                    QUITE_MENU_ITEM_LABEL => {
                         std::process::exit(0);
                     }
                     _ => {}
@@ -70,8 +109,9 @@ fn main() {
             _ => {}
         })
         .on_window_event(|event| match event.event() {
-            WindowEvent::Focused(false) => {
+            WindowEvent::CloseRequested{api, ..} => {
                 if event.window().label() == MAIN_WIN_LABEL {
+                    api.prevent_close();
                     let _ = event.window().hide();
                 }
             }
