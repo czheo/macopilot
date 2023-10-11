@@ -2,6 +2,8 @@
 
 Download from: https://github.com/czheo/macopilot/releases
 
+Use `Ctrl+G` for quick access.
+
 ![screenshot](screenshot.jpg)
 
 I'm not enrolled in Apple Developer Program so cannot code sign dmg files.
