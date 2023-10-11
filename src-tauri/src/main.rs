@@ -1,11 +1,11 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use tauri::SystemTray;
-use tauri::{CustomMenuItem, SystemTrayEvent, Menu, SystemTrayMenu};
+use tauri::{CustomMenuItem, SystemTrayEvent, Menu, SystemTrayMenu, MenuItem, Submenu, AboutMetadata};
 use tauri::{WindowBuilder, WindowEvent};
 use tauri::Manager;
 use tauri::GlobalShortcutManager;
-use tauri::ActivationPolicy;
+// use tauri::ActivationPolicy;
 
 const APP_NAME: &str = "Macopilot";
 const MAIN_WIN_LABEL: &str = "main-win";
@@ -75,11 +75,34 @@ fn create_system_tray() -> SystemTray {
 }
 
 fn create_menu() -> Menu {
-    return Menu::new();
+    let app_menu = Submenu::new(
+        APP_NAME,
+        Menu::new()
+        .add_native_item(
+            MenuItem::About(
+                APP_NAME.to_string(),
+                AboutMetadata::new()
+            )
+        )
+    );
+    let edit_menu = Submenu::new(
+        "Edit",
+        Menu::new()
+        .add_native_item(MenuItem::Copy)
+        .add_native_item(MenuItem::Paste)
+        .add_native_item(MenuItem::Cut)
+        .add_native_item(MenuItem::SelectAll)
+        .add_native_item(MenuItem::Separator)
+        .add_native_item(MenuItem::Undo)
+        .add_native_item(MenuItem::Redo)
+    );
+    return Menu::new()
+        .add_submenu(app_menu)
+        .add_submenu(edit_menu);
 }
 
 fn on_setup(app: &mut tauri::App) {
-    app.set_activation_policy(ActivationPolicy::Accessory);
+    // app.set_activation_policy(ActivationPolicy::Accessory);
     let app_handle = app.handle();
     init_window(&app_handle);
     register_hot_key(app_handle);
