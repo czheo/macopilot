@@ -5,7 +5,7 @@ use tauri::{CustomMenuItem, SystemTrayEvent, Menu, SystemTrayMenu, MenuItem, Sub
 use tauri::{WindowBuilder, WindowEvent};
 use tauri::Manager;
 use tauri::GlobalShortcutManager;
-// use tauri::ActivationPolicy;
+use tauri::ActivationPolicy;
 
 const APP_NAME: &str = "Macopilot";
 const MAIN_WIN_LABEL: &str = "main-win";
@@ -102,7 +102,7 @@ fn create_menu() -> Menu {
 }
 
 fn on_setup(app: &mut tauri::App) {
-    // app.set_activation_policy(ActivationPolicy::Accessory);
+    app.set_activation_policy(ActivationPolicy::Accessory);
     let app_handle = app.handle();
     init_window(&app_handle);
     register_hot_key(app_handle);
